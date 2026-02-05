@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "861219003770",
+    "project_id": "poli-loan-app",
+    "storage_bucket": "poli-loan-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:861219003770:android:05dfdf9a0850c6b0d60ac3",
+        "android_client_info": {
+          "package_name": "com.company.poli_2"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCC6rgC6MOkRqpwPA7faqaeg4p23rzAXAo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:861219003770:android:6c5dff436e49022ed60ac3",
+        "android_client_info": {
+          "package_name": "com.example.poli"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCC6rgC6MOkRqpwPA7faqaeg4p23rzAXAo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
