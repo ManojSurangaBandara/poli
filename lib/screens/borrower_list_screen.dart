@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/borrower.dart';
 import '../services/local_storage_service.dart';
 import '../providers/borrower_provider.dart';
@@ -45,6 +46,24 @@ class BorrowerListScreen extends StatelessWidget {
                       builder: (context) => BorrowerTabsScreen(borrower: borrower),
                     ),
                   );
+                },
+                onLongPress: () async {
+                  // Clean the phone number by removing spaces, dashes, etc., but keep the + sign
+                  String cleanNumber = borrower.mobileNumber.replaceAll(RegExp(r'[^\+\d]'), '');
+                  final Uri phoneUri = Uri(scheme: 'tel', path: cleanNumber);
+                  try {
+                    if (await canLaunchUrl(phoneUri)) {
+                      await launchUrl(phoneUri);
+                    } else {
+                      // Try without canLaunchUrl check as a fallback
+                      await launchUrl(phoneUri, mode: LaunchMode.externalApplication);
+                    }
+                  } catch (e) {
+                    // Handle error - could show a snackbar
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Could not launch phone dialer: $e')),
+                    );
+                  }
                 },
               );
             },
