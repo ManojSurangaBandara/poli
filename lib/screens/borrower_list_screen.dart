@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/borrower.dart';
 import '../services/local_storage_service.dart';
 import '../providers/borrower_provider.dart';
-import 'borrower_profile_screen.dart';
+import 'borrower_tabs_screen.dart';
 import 'add_borrower_screen.dart';
 
 class BorrowerListScreen extends StatelessWidget {
@@ -42,7 +42,7 @@ class BorrowerListScreen extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => BorrowerProfileScreen(borrower: borrower),
+                      builder: (context) => BorrowerTabsScreen(borrower: borrower),
                     ),
                   );
                 },

@@ -4,6 +4,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/borrower.dart';
+import '../models/loan.dart';
 
 class LocalStorageService {
   static Database? _database;
@@ -19,7 +20,7 @@ class LocalStorageService {
     String path = join(documentsDirectory.path, 'borrowers.db');
     return await openDatabase(
       path,
-      version: 2,
+      version: 7,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -38,6 +39,18 @@ class LocalStorageService {
         branchName TEXT
       )
     ''');
+    await db.execute('''
+      CREATE TABLE loans(
+        id TEXT PRIMARY KEY,
+        borrowerId TEXT,
+        amount REAL,
+        date TEXT,
+        status TEXT,
+        interestPercentage REAL,
+        interest REAL,
+        nextInterestDueDate TEXT
+      )
+    ''');
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -46,6 +59,39 @@ class LocalStorageService {
       await db.execute('ALTER TABLE borrowers ADD COLUMN accountNumber TEXT');
       await db.execute('ALTER TABLE borrowers ADD COLUMN accountHolderName TEXT');
       await db.execute('ALTER TABLE borrowers ADD COLUMN branchName TEXT');
+    }
+    if (oldVersion < 3) {
+      await db.execute('''
+        CREATE TABLE loans(
+          id TEXT PRIMARY KEY,
+          borrowerId TEXT,
+          amount REAL,
+          date TEXT,
+          status TEXT,
+          interestPercentage REAL,
+          installmentAmount REAL,
+          nextInstallmentDate TEXT
+        )
+      ''');
+    }
+    if (oldVersion < 4) {
+      await db.execute('ALTER TABLE loans ADD COLUMN interestPercentage REAL DEFAULT 0.0');
+    }
+    if (oldVersion < 6) {
+      // Rename old columns if exist
+      try {
+        await db.execute('ALTER TABLE loans RENAME COLUMN monthlyInterestAmount TO interest');
+      } catch (e) {
+        await db.execute('ALTER TABLE loans ADD COLUMN interest REAL DEFAULT 0.0');
+      }
+      try {
+        await db.execute('ALTER TABLE loans RENAME COLUMN nextInstallmentDate TO nextInterestDueDate');
+      } catch (e) {
+        await db.execute('ALTER TABLE loans ADD COLUMN nextInterestDueDate TEXT');
+      }
+    }
+    if (oldVersion < 7) {
+      await db.execute('ALTER TABLE loans ADD COLUMN repaidDate TEXT');
     }
   }
 
@@ -97,5 +143,30 @@ class LocalStorageService {
       }
     }
     await db.delete('borrowers', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<List<Loan>> getLoansForBorrower(String borrowerId) async {
+    Database db = await database;
+    List<Map<String, dynamic>> maps = await db.query('loans', where: 'borrowerId = ?', whereArgs: [borrowerId]);
+    return maps.map((map) => Loan.fromMap(map)).toList();
+  }
+
+  Future<Loan?> getActiveLoanForBorrower(String borrowerId) async {
+    Database db = await database;
+    List<Map<String, dynamic>> maps = await db.query('loans', where: 'borrowerId = ? AND status = ?', whereArgs: [borrowerId, 'active']);
+    if (maps.isNotEmpty) {
+      return Loan.fromMap(maps.first);
+    }
+    return null;
+  }
+
+  Future<void> addLoan(Loan loan) async {
+    Database db = await database;
+    await db.insert('loans', loan.toMap());
+  }
+
+  Future<void> updateLoan(Loan loan) async {
+    Database db = await database;
+    await db.update('loans', loan.toMap(), where: 'id = ?', whereArgs: [loan.id]);
   }
 }
