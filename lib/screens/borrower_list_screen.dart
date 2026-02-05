@@ -8,25 +8,108 @@ import '../providers/borrower_provider.dart';
 import 'borrower_tabs_screen.dart';
 import 'add_borrower_screen.dart';
 
-class BorrowerListScreen extends StatelessWidget {
+class BorrowerListScreen extends StatefulWidget {
   const BorrowerListScreen({super.key});
+
+  @override
+  _BorrowerListScreenState createState() => _BorrowerListScreenState();
+}
+
+class _BorrowerListScreenState extends State<BorrowerListScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  bool _isSearching = false;
+  List<Borrower> _filteredBorrowers = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    final provider = Provider.of<BorrowerProvider>(context, listen: false);
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      if (query.isEmpty) {
+        _filteredBorrowers = provider.borrowers;
+      } else {
+        _filteredBorrowers = provider.borrowers.where((borrower) {
+          return borrower.name.toLowerCase().contains(query) ||
+                 borrower.mobileNumber.toLowerCase().contains(query) ||
+                 borrower.bankName.toLowerCase().contains(query) ||
+                 borrower.accountHolderName.toLowerCase().contains(query);
+        }).toList();
+      }
+    });
+  }
+
+  void _startSearch() {
+    setState(() {
+      _isSearching = true;
+    });
+  }
+
+  void _stopSearch() {
+    setState(() {
+      _isSearching = false;
+      _searchController.clear();
+      _filteredBorrowers = Provider.of<BorrowerProvider>(context, listen: false).borrowers;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Borrowers'),
+        title: _isSearching
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: 'Search borrowers...',
+                  border: InputBorder.none,
+                  hintStyle: TextStyle(
+                    color: const Color.fromARGB(179, 17, 14, 14),
+                    fontSize: 18,
+                  ),
+                  contentPadding: EdgeInsets.zero,
+                ),
+                style: const TextStyle(
+                  color: Color.fromARGB(255, 92, 67, 67),
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                ),
+                cursorColor: const Color.fromARGB(255, 97, 86, 86),
+              )
+            : const Text('Borrowers'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-              // TODO: Implement search functionality
-            },
-          ),
+          if (_isSearching)
+            IconButton(
+              icon: const Icon(Icons.clear),
+              onPressed: _stopSearch,
+              tooltip: 'Stop search',
+            )
+          else
+            IconButton(
+              icon: const Icon(Icons.search),
+              onPressed: _startSearch,
+              tooltip: 'Search borrowers',
+            ),
         ],
       ),
       body: Consumer<BorrowerProvider>(
         builder: (context, provider, child) {
+          // Initialize filtered borrowers if not searching
+          if (!_isSearching) {
+            _filteredBorrowers = provider.borrowers;
+          }
+
           if (provider.isLoading) {
             return const Center(
               child: Column(
@@ -39,7 +122,7 @@ class BorrowerListScreen extends StatelessWidget {
               ),
             );
           }
-          if (provider.borrowers.isEmpty) {
+          if (_filteredBorrowers.isEmpty && !_isSearching) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -74,12 +157,42 @@ class BorrowerListScreen extends StatelessWidget {
               ),
             );
           }
+          if (_filteredBorrowers.isEmpty && _isSearching) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.search_off, size: 80, color: Colors.grey.shade400),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No borrowers found',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Try a different search term',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.grey.shade500,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: _stopSearch,
+                    icon: const Icon(Icons.clear),
+                    label: const Text('Clear Search'),
+                  ),
+                ],
+              ),
+            );
+          }
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: ListView.builder(
-              itemCount: provider.borrowers.length,
+              itemCount: _filteredBorrowers.length,
               itemBuilder: (context, index) {
-                Borrower borrower = provider.borrowers[index];
+                Borrower borrower = _filteredBorrowers[index];
                 return Card(
                   margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   child: ListTile(
