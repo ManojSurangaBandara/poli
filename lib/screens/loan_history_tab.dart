@@ -95,13 +95,13 @@ class _LoanHistoryTabState extends State<LoanHistoryTab> {
                               Row(
                                 children: [
                                   Icon(
-                                    Icons.currency_rupee,
+                                    Icons.currency_exchange,
                                     color: Theme.of(context).colorScheme.primary,
                                     size: 24,
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    '₹${loan.amount.toStringAsFixed(2)}',
+                                    'රු. ${loan.amount.toStringAsFixed(2)}',
                                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                                       fontWeight: FontWeight.w700,
                                       color: Theme.of(context).colorScheme.primary,
@@ -157,7 +157,7 @@ class _LoanHistoryTabState extends State<LoanHistoryTab> {
                                 child: _buildDetailItem(
                                   icon: Icons.payments,
                                   label: 'Monthly Interest',
-                                  value: '₹${loan.interest.toStringAsFixed(2)}',
+                                  value: 'රු. ${loan.interest.toStringAsFixed(2)}',
                                 ),
                               ),
                               Expanded(
@@ -210,7 +210,7 @@ class _LoanHistoryTabState extends State<LoanHistoryTab> {
                                       ),
                                     ),
                                     Text(
-                                      '₹${totalInterestPaid.toStringAsFixed(2)}',
+                                      'රු. ${totalInterestPaid.toStringAsFixed(2)}',
                                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                                         fontWeight: FontWeight.w600,
                                         color: Theme.of(context).colorScheme.primary,

@@ -158,7 +158,7 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
         return AlertDialog(
           title: const Text('Confirm Loan Settlement'),
           content: Text(
-            'Are you sure you want to settle this loan of ₹${_activeLoan!.amount.toStringAsFixed(2)}? '
+            'Are you sure you want to settle this loan of රු. ${_activeLoan!.amount.toStringAsFixed(2)}? '
             'This action cannot be undone.'
           ),
           actions: [
@@ -256,13 +256,13 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
                             Row(
                               children: [
                                 Icon(
-                                  Icons.currency_rupee,
+                                  Icons.currency_exchange,
                                   color: Theme.of(context).colorScheme.primary,
                                   size: 24,
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
-                                  '₹${_activeLoan!.amount.toStringAsFixed(2)}',
+                                  'රු. ${_activeLoan!.amount.toStringAsFixed(2)}',
                                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                                     fontWeight: FontWeight.w700,
                                     color: Theme.of(context).colorScheme.primary,
@@ -434,7 +434,7 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
               ),
               const SizedBox(width: 8),
               Text(
-                'Interest Due: ₹${_activeLoan!.interest.toStringAsFixed(2)}',
+                'Interest Due: රු. ${_activeLoan!.interest.toStringAsFixed(2)}',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w600,
                   color: isOverdue ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.onSurface,
@@ -695,7 +695,7 @@ class _InterestCollectionAnimationState extends State<_InterestCollectionAnimati
                         ),
                         child: const Center(
                           child: Text(
-                            '₹',
+                            'රු.',
                             style: TextStyle(
                               fontSize: 36,
                               fontWeight: FontWeight.bold,
@@ -735,7 +735,7 @@ class _InterestCollectionAnimationState extends State<_InterestCollectionAnimati
                 builder: (context, child) {
                   final value = widget.interestAmount * _countAnimation.value;
                   return Text(
-                    '₹${value.toStringAsFixed(2)}',
+                    'රු. ${value.toStringAsFixed(2)}',
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: colorScheme.primary,
