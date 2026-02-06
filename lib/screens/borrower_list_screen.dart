@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/borrower.dart';
 import '../services/local_storage_service.dart';
 import '../providers/borrower_provider.dart';
+import '../providers/theme_provider.dart';
 import 'borrower_tabs_screen.dart';
 import 'add_borrower_screen.dart';
 
@@ -95,12 +96,26 @@ class _BorrowerListScreenState extends State<BorrowerListScreen> {
               onPressed: _stopSearch,
               tooltip: 'Stop search',
             )
-          else
+          else ...[
             IconButton(
               icon: const Icon(Icons.search),
               onPressed: _startSearch,
               tooltip: 'Search borrowers',
             ),
+            Consumer<ThemeProvider>(
+              builder: (context, themeProvider, child) {
+                return IconButton(
+                  icon: Icon(
+                    themeProvider.isDarkMode ? Icons.light_mode : Icons.dark_mode,
+                  ),
+                  onPressed: () {
+                    themeProvider.toggleTheme();
+                  },
+                  tooltip: themeProvider.isDarkMode ? 'Switch to light mode' : 'Switch to dark mode',
+                );
+              },
+            ),
+          ],
         ],
       ),
       body: Consumer<BorrowerProvider>(
