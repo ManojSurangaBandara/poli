@@ -135,6 +135,32 @@ class _DashboardTabState extends State<DashboardTab> {
   }
 
   Future<void> _settleLoan() async {
+    // Show confirmation dialog
+    final shouldSettle = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirm Loan Settlement'),
+          content: Text(
+            'Are you sure you want to settle this loan of ₹${_activeLoan!.amount.toStringAsFixed(2)}? '
+            'This action cannot be undone.'
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Settle Loan'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldSettle != true) return;
+
     final provider = Provider.of<BorrowerProvider>(context, listen: false);
     final settledLoan = Loan(
       id: _activeLoan!.id,
@@ -149,6 +175,23 @@ class _DashboardTabState extends State<DashboardTab> {
     );
     await provider.updateLoan(settledLoan);
     _loadActiveLoan();
+
+    // Show success alert
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Loan Settled'),
+          content: const Text('The loan has been successfully settled.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
