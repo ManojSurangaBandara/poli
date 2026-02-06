@@ -14,8 +14,9 @@ class DashboardTab extends StatefulWidget {
   _DashboardTabState createState() => _DashboardTabState();
 }
 
-class _DashboardTabState extends State<DashboardTab> {
+class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMixin {
   Loan? _activeLoan;
+  bool _isCollectingInterest = false;
 
   @override
   void initState() {
@@ -101,37 +102,52 @@ class _DashboardTabState extends State<DashboardTab> {
   }
 
   Future<void> _payInterest() async {
-    final provider = Provider.of<BorrowerProvider>(context, listen: false);
-    final updatedLoan = Loan(
-      id: _activeLoan!.id,
-      borrowerId: _activeLoan!.borrowerId,
-      amount: _activeLoan!.amount,
-      date: _activeLoan!.date,
-      status: _activeLoan!.status,
-      interestPercentage: _activeLoan!.interestPercentage,
-      interest: _activeLoan!.interest,
-      nextInterestDueDate: _activeLoan!.nextInterestDueDate.add(const Duration(days: 30)),
-      repaidDate: _activeLoan!.repaidDate,
-    );
-    await provider.updateLoan(updatedLoan);
-    _loadActiveLoan();
-    
-    // Show success alert
-    showDialog(
+    setState(() {
+      _isCollectingInterest = true;
+    });
+
+    // Show the animated collection dialog
+    final result = await showGeneralDialog<bool>(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Interest Paid'),
-          content: Text('Interest of ₹${_activeLoan!.interest.toStringAsFixed(2)} has been collected. Next due date updated to ${updatedLoan.nextInterestDueDate.toLocal().toString().split(' ')[0]}.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('OK'),
-            ),
-          ],
+      barrierDismissible: false,
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 400),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return _InterestCollectionAnimation(
+          interestAmount: _activeLoan!.interest,
+          onComplete: () async {
+            final provider = Provider.of<BorrowerProvider>(context, listen: false);
+            final updatedLoan = Loan(
+              id: _activeLoan!.id,
+              borrowerId: _activeLoan!.borrowerId,
+              amount: _activeLoan!.amount,
+              date: _activeLoan!.date,
+              status: _activeLoan!.status,
+              interestPercentage: _activeLoan!.interestPercentage,
+              interest: _activeLoan!.interest,
+              nextInterestDueDate: _activeLoan!.nextInterestDueDate.add(const Duration(days: 30)),
+              repaidDate: _activeLoan!.repaidDate,
+            );
+            await provider.updateLoan(updatedLoan);
+            return updatedLoan.nextInterestDueDate;
+          },
+        );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return ScaleTransition(
+          scale: CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutBack,
+          ),
+          child: child,
         );
       },
     );
+
+    _loadActiveLoan();
+    setState(() {
+      _isCollectingInterest = false;
+    });
   }
 
   Future<void> _settleLoan() async {
@@ -497,6 +513,289 @@ class _DashboardTabState extends State<DashboardTab> {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+// Animated Interest Collection Dialog
+class _InterestCollectionAnimation extends StatefulWidget {
+  final double interestAmount;
+  final Future<DateTime> Function() onComplete;
+
+  const _InterestCollectionAnimation({
+    required this.interestAmount,
+    required this.onComplete,
+  });
+
+  @override
+  State<_InterestCollectionAnimation> createState() => _InterestCollectionAnimationState();
+}
+
+class _InterestCollectionAnimationState extends State<_InterestCollectionAnimation>
+    with TickerProviderStateMixin {
+  late AnimationController _coinController;
+  late AnimationController _checkController;
+  late AnimationController _countController;
+  late Animation<double> _coinAnimation;
+  late Animation<double> _checkAnimation;
+  late Animation<double> _countAnimation;
+  
+  bool _showCheck = false;
+  bool _completed = false;
+  DateTime? _nextDueDate;
+
+  @override
+  void initState() {
+    super.initState();
+    
+    // Coin falling animation
+    _coinController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+    _coinAnimation = CurvedAnimation(
+      parent: _coinController,
+      curve: Curves.bounceOut,
+    );
+    
+    // Check mark animation
+    _checkController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _checkAnimation = CurvedAnimation(
+      parent: _checkController,
+      curve: Curves.elasticOut,
+    );
+    
+    // Count up animation
+    _countController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+    _countAnimation = CurvedAnimation(
+      parent: _countController,
+      curve: Curves.easeOut,
+    );
+    
+    _startAnimation();
+  }
+
+  Future<void> _startAnimation() async {
+    // Start coin animation
+    _coinController.forward();
+    _countController.forward();
+    
+    // Wait for coin to land
+    await Future.delayed(const Duration(milliseconds: 1000));
+    
+    // Process the payment
+    _nextDueDate = await widget.onComplete();
+    
+    // Show check mark
+    setState(() {
+      _showCheck = true;
+    });
+    _checkController.forward();
+    
+    await Future.delayed(const Duration(milliseconds: 400));
+    
+    setState(() {
+      _completed = true;
+    });
+  }
+
+  @override
+  void dispose() {
+    _coinController.dispose();
+    _checkController.dispose();
+    _countController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
+    return Center(
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          margin: const EdgeInsets.all(32),
+          padding: const EdgeInsets.all(32),
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Animated coin/money icon
+              SizedBox(
+                height: 120,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Background circle
+                    Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            colorScheme.primaryContainer,
+                            colorScheme.secondaryContainer,
+                          ],
+                        ),
+                      ),
+                    ),
+                    // Animated coin
+                    AnimatedBuilder(
+                      animation: _coinAnimation,
+                      builder: (context, child) {
+                        return Transform.translate(
+                          offset: Offset(0, -50 * (1 - _coinAnimation.value)),
+                          child: Transform.rotate(
+                            angle: _coinAnimation.value * 2 * 3.14159,
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: Container(
+                        width: 70,
+                        height: 70,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Color(0xFFFFD700),
+                              Color(0xFFFFA500),
+                            ],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFFFD700).withOpacity(0.5),
+                              blurRadius: 15,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: const Center(
+                          child: Text(
+                            '₹',
+                            style: TextStyle(
+                              fontSize: 36,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Check mark overlay
+                    if (_showCheck)
+                      ScaleTransition(
+                        scale: _checkAnimation,
+                        child: Container(
+                          width: 100,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.green.withOpacity(0.9),
+                          ),
+                          child: const Icon(
+                            Icons.check_rounded,
+                            color: Colors.white,
+                            size: 50,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // Animated amount counter
+              AnimatedBuilder(
+                animation: _countAnimation,
+                builder: (context, child) {
+                  final value = widget.interestAmount * _countAnimation.value;
+                  return Text(
+                    '₹${value.toStringAsFixed(2)}',
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.primary,
+                    ),
+                  );
+                },
+              ),
+              
+              const SizedBox(height: 8),
+              
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: _completed
+                    ? Column(
+                        children: [
+                          Text(
+                            'Interest Collected!',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: Colors.green,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Next due: ${_nextDueDate?.toLocal().toString().split(' ')[0] ?? ''}',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      )
+                    : Text(
+                        'Collecting interest...',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // Close button (only after completion)
+              AnimatedOpacity(
+                opacity: _completed ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 300),
+                child: FilledButton.icon(
+                  onPressed: _completed ? () => Navigator.of(context).pop(true) : null,
+                  icon: const Icon(Icons.done_rounded),
+                  label: const Text('Done'),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
