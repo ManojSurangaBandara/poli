@@ -1,13 +1,43 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ThemeProvider with ChangeNotifier {
+  static const String _themeKey = 'is_dark_mode';
   bool _isDarkMode = false;
+  bool _isInitialized = false;
 
   bool get isDarkMode => _isDarkMode;
+  bool get isInitialized => _isInitialized;
 
-  void toggleTheme() {
+  ThemeProvider() {
+    _loadThemePreference();
+  }
+
+  Future<void> _loadThemePreference() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _isDarkMode = prefs.getBool(_themeKey) ?? false;
+      _isInitialized = true;
+      notifyListeners();
+    } catch (e) {
+      // If there's an error loading preferences, use default (light mode)
+      _isDarkMode = false;
+      _isInitialized = true;
+      notifyListeners();
+    }
+  }
+
+  Future<void> toggleTheme() async {
     _isDarkMode = !_isDarkMode;
     notifyListeners();
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_themeKey, _isDarkMode);
+    } catch (e) {
+      // If saving fails, we still notify listeners but the preference won't persist
+      // This ensures the UI updates even if storage fails
+    }
   }
 
   ThemeData get currentTheme {
