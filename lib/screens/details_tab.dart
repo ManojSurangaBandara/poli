@@ -1,8 +1,10 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/borrower.dart';
+import '../providers/borrower_provider.dart';
 
 class DetailsTab extends StatelessWidget {
   final Borrower borrower;
@@ -12,7 +14,7 @@ class DetailsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       child: Column(
         children: [
           // Profile Picture Section
@@ -285,9 +287,121 @@ class DetailsTab extends StatelessWidget {
               ),
             ),
           ),
+
+          const SizedBox(height: 32),
+
+          // Delete Borrower Button
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(top: 16, bottom: 16),
+            child: FilledButton.icon(
+              onPressed: () => _showDeleteConfirmationDialog(context),
+              icon: const Icon(Icons.delete_forever),
+              label: const Text('Delete Borrower'),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFD32F2F), // Bright red
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 2,
+              ),
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  void _showDeleteConfirmationDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                color: Theme.of(context).colorScheme.error,
+                size: 28,
+              ),
+              const SizedBox(width: 12),
+              const Text('Delete Borrower'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Are you sure you want to delete "${borrower.name}"?',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'This action will permanently delete all loans and data associated with this borrower. This cannot be undone.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton.icon(
+              onPressed: () => _deleteBorrower(context),
+              icon: const Icon(Icons.delete_forever),
+              label: const Text('Delete'),
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Theme.of(context).colorScheme.onError,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _deleteBorrower(BuildContext context) async {
+    final provider = Provider.of<BorrowerProvider>(context, listen: false);
+
+    try {
+      await provider.deleteBorrower(borrower.id);
+
+      Navigator.of(context).pop(); // Close confirmation dialog
+      Navigator.of(context).pop(); // Go back to borrower list
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${borrower.name} has been deleted'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      );
+    } catch (e) {
+      Navigator.of(context).pop(); // Close confirmation dialog
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to delete borrower: $e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      );
+    }
   }
 
   Widget _buildInfoRow({
