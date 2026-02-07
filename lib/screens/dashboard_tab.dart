@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../models/borrower.dart';
 import '../models/loan.dart';
 import '../providers/borrower_provider.dart';
+import '../providers/undo_provider.dart';
 
 class DashboardTab extends StatefulWidget {
   final Borrower borrower;
@@ -16,7 +17,6 @@ class DashboardTab extends StatefulWidget {
 
 class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMixin {
   Loan? _activeLoan;
-  bool _isCollectingInterest = false;
 
   @override
   void initState() {
@@ -89,7 +89,12 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
                   nextInterestDueDate: nextInstallmentDate,
                 );
                 final provider = Provider.of<BorrowerProvider>(context, listen: false);
+                final undoProvider = Provider.of<UndoProvider>(context, listen: false);
                 await provider.addLoan(loan);
+                
+                // Record undo action
+                undoProvider.recordAction(ActionType.lendMoney, loan);
+                
                 Navigator.pop(context);
                 _loadActiveLoan();
               }
@@ -102,12 +107,9 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
   }
 
   Future<void> _payInterest() async {
-    setState(() {
-      _isCollectingInterest = true;
-    });
 
     // Show the animated collection dialog
-    final result = await showGeneralDialog<bool>(
+    await showGeneralDialog<bool>(
       context: context,
       barrierDismissible: false,
       barrierColor: Colors.black54,
@@ -117,6 +119,12 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
           interestAmount: _activeLoan!.interest,
           onComplete: () async {
             final provider = Provider.of<BorrowerProvider>(context, listen: false);
+            final undoProvider = Provider.of<UndoProvider>(context, listen: false);
+            
+            // Store data for undo
+            final previousInterestDate = _activeLoan!.nextInterestDueDate;
+            final collectedInterest = _activeLoan!.interest;
+            
             final updatedLoan = Loan(
               id: _activeLoan!.id,
               borrowerId: _activeLoan!.borrowerId,
@@ -129,6 +137,17 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
               repaidDate: _activeLoan!.repaidDate,
             );
             await provider.updateLoan(updatedLoan);
+            
+            // Record undo action
+            undoProvider.recordAction(
+              ActionType.collectInterest,
+              {
+                'loan': updatedLoan,
+                'interest': collectedInterest,
+                'previousInterestDate': previousInterestDate,
+              },
+            );
+            
             return updatedLoan.nextInterestDueDate;
           },
         );
@@ -145,9 +164,6 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
     );
 
     _loadActiveLoan();
-    setState(() {
-      _isCollectingInterest = false;
-    });
   }
 
   Future<void> _settleLoan() async {
@@ -178,6 +194,11 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
     if (shouldSettle != true) return;
 
     final provider = Provider.of<BorrowerProvider>(context, listen: false);
+    final undoProvider = Provider.of<UndoProvider>(context, listen: false);
+    
+    // Store original loan for undo
+    final originalLoan = _activeLoan!;
+    
     final settledLoan = Loan(
       id: _activeLoan!.id,
       borrowerId: _activeLoan!.borrowerId,
@@ -190,6 +211,10 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
       repaidDate: DateTime.now(),
     );
     await provider.updateLoan(settledLoan);
+    
+    // Record undo action
+    undoProvider.recordAction(ActionType.settleLoan, originalLoan);
+    
     _loadActiveLoan();
 
     // Show success alert
@@ -214,6 +239,11 @@ class _DashboardTabState extends State<DashboardTab> with TickerProviderStateMix
   Widget build(BuildContext context) {
     return Consumer<BorrowerProvider>(
       builder: (context, provider, child) {
+        // Reload active loan when provider changes
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _loadActiveLoan();
+        });
+        
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
           child: _activeLoan != null

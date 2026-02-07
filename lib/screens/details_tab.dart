@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/borrower.dart';
 import '../providers/borrower_provider.dart';
+import '../providers/undo_provider.dart';
 
 class DetailsTab extends StatelessWidget {
   final Borrower borrower;
@@ -371,8 +372,12 @@ class DetailsTab extends StatelessWidget {
 
   void _deleteBorrower(BuildContext context) async {
     final provider = Provider.of<BorrowerProvider>(context, listen: false);
+    final undoProvider = Provider.of<UndoProvider>(context, listen: false);
 
     try {
+      // Record undo action before deletion
+      undoProvider.recordAction(ActionType.deleteBorrower, borrower);
+      
       await provider.deleteBorrower(borrower.id);
 
       Navigator.of(context).pop(); // Close confirmation dialog

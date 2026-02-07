@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import '../models/borrower.dart';
 import '../providers/borrower_provider.dart';
+import '../providers/undo_provider.dart';
 import '../services/local_storage_service.dart';
 
 class AddBorrowerScreen extends StatefulWidget {
@@ -56,6 +57,10 @@ class _AddBorrowerScreenState extends State<AddBorrowerScreen> {
         branchName: _branchNameController.text,
       );
       await Provider.of<BorrowerProvider>(context, listen: false).addBorrower(borrower);
+      
+      // Record undo action
+      Provider.of<UndoProvider>(context, listen: false).recordAction(ActionType.addBorrower, borrower);
+      
       Navigator.pop(context);
     }
   }

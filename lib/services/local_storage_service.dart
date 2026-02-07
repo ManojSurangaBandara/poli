@@ -169,4 +169,9 @@ class LocalStorageService {
     Database db = await database;
     await db.update('loans', loan.toMap(), where: 'id = ?', whereArgs: [loan.id]);
   }
+
+  Future<void> deleteLoan(String loanId) async {
+    Database db = await database;
+    await db.delete('loans', where: 'id = ?', whereArgs: [loanId]);
+  }
 }

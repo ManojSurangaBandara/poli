@@ -57,4 +57,9 @@ class BorrowerProvider with ChangeNotifier {
     await _localStorageService.updateLoan(loan);
     notifyListeners();
   }
+
+  Future<void> deleteLoan(String loanId) async {
+    await _localStorageService.deleteLoan(loanId);
+    notifyListeners();
+  }
 }
